@@ -12,79 +12,32 @@
         theme: {
           extend: {
             colors: {
-              background: 'rgb(var(--background) / <alpha-value>)',
-              surface: 'rgb(var(--surface) / <alpha-value>)',
-              primary: 'rgb(var(--primary) / <alpha-value>)',
-              primaryHover: 'rgb(var(--primary-hover) / <alpha-value>)',
-              secondary: 'rgb(var(--secondary) / <alpha-value>)',
-              accent: 'rgb(var(--accent) / <alpha-value>)',
-              textMain: 'rgb(var(--text-main) / <alpha-value>)',
-              textMuted: 'rgb(var(--text-muted) / <alpha-value>)',
-              border: 'rgb(var(--border) / <alpha-value>)',
+              background: '#FBFBFD',
+              surface: '#FFFFFF',
+              primary: '#6366F1',
+              accent: '#EC4899',
+              border: '#F2F2F7',
             },
-            fontFamily: {
-              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.3s ease-out',
-              'slide-in': 'slideIn 0.3s ease-out',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              slideIn: {
-                '0%': { transform: 'translateX(-20px)', opacity: '0' },
-                '100%': { transform: 'translateX(0)', opacity: '1' },
-              }
-            }
+            fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] }
           }
         }
       }
     </script>
     <style>
       :root {
-        /* Default Dark Theme */
-        --background: 15 23 42; /* Slate 900 */
-        --surface: 30 41 59;    /* Slate 800 */
-        --primary: 99 102 241;  /* Indigo 500 */
-        --primary-hover: 79 70 229; /* Indigo 600 */
-        --secondary: 16 185 129; /* Emerald 500 */
-        --accent: 244 63 94;    /* Rose 500 */
-        --text-main: 248 250 252; /* Slate 50 */
-        --text-muted: 148 163 184; /* Slate 400 */
-        --border: 51 65 85;     /* Slate 700 */
+        --background: 251 251 253;
+        --surface: 255 255 255;
+        --border: 242 242 247;
       }
-
-      .light {
-        --background: 241 245 249; /* Slate 100 */
-        --surface: 255 255 255;    /* White */
-        --primary: 79 70 229;      /* Indigo 600 */
-        --primary-hover: 67 56 202; /* Indigo 700 */
-        --secondary: 5 150 105;    /* Emerald 600 */
-        --accent: 225 29 72;       /* Rose 600 */
-        --text-main: 15 23 42;     /* Slate 900 */
-        --text-muted: 100 116 139; /* Slate 500 */
-        --border: 203 213 225;     /* Slate 300 */
-      }
-
-      body, html { margin: 0; padding: 0; height: 100%; background-color: rgb(var(--background)); color: rgb(var(--text-main)); overflow: hidden; transition: background-color 0.3s ease, color 0.3s ease; }
-      #root { height: 100%; width: 100%; }
+      body { margin: 0; background-color: rgb(var(--background)); overflow: hidden; -webkit-font-smoothing: antialiased; }
+      #root { height: 100vh; width: 100%; }
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-thumb { background: #E5E5EA; border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #E5E5EA; border-radius: 10px; }
       
-      input:-webkit-autofill,
-      input:-webkit-autofill:hover, 
-      input:-webkit-autofill:focus, 
-      input:-webkit-autofill:active{
-          -webkit-box-shadow: 0 0 0 30px rgb(var(--surface)) inset !important;
-          -webkit-text-fill-color: rgb(var(--text-main)) !important;
-      }
-      
-      /* Clean scrollbar */
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: rgb(var(--text-muted)); }
+      /* Smoother inputs */
+      input:focus, select:focus { outline: none !important; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1) !important; }
     </style>
   <script type="importmap">
 {
@@ -98,7 +51,8 @@
     "clsx": "https://aistudiocdn.com/clsx@^2.1.1",
     "three": "https://aistudiocdn.com/three@^0.181.2",
     "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.25",
-    "@react-three/drei": "https://aistudiocdn.com/@react-three/drei@^10.7.7"
+    "@react-three/drei": "https://aistudiocdn.com/@react-three/drei@^10.7.7",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^0.21.0"
   }
 }
 </script>

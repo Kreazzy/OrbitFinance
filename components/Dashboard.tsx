@@ -1,633 +1,379 @@
-import React, { useMemo, useState, useEffect } from 'react';
+
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExpenseChart3D from './ExpenseChart3D';
-import { AdminPanel } from './AdminPanel';
 import { 
   Plus, Trash2, TrendingUp, TrendingDown, LayoutGrid, 
-  Settings, LogOut, Wallet, Share2, Users, ChevronDown, CheckCircle, X,
-  Menu, Moon, Sun, Edit2, Pencil, Shield, ExternalLink
+  Settings, LogOut, Wallet, CheckCircle, X,
+  Menu, MoreVertical, UserCog, ExternalLink, Sparkles, BrainCircuit, ShieldAlert,
+  ChevronRight, ArrowRight, ArrowUpRight, History, Loader2
 } from 'lucide-react';
+import { CURRENCIES, Transaction, getCurrencySymbol, TransactionType } from '../types';
 import clsx from 'clsx';
-import { CategoryData, Transaction } from '../types';
-
-// --- Shared Components ---
-
-const Card = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
-  <div className={clsx(
-    "bg-surface/50 backdrop-blur-md border border-border rounded-xl p-5 shadow-sm transition-all hover:bg-surface/70",
-    className
-  )}>
-    {children}
-  </div>
-);
-
-const Button = ({ children, variant = 'primary', onClick, className }: any) => {
-  const baseStyle = "px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2";
-  const variants = {
-    primary: "bg-primary hover:bg-primaryHover text-white shadow-lg shadow-primary/20",
-    secondary: "bg-surface border border-border text-textMain hover:bg-border",
-    danger: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
-    ghost: "text-textMuted hover:text-textMain"
-  };
-  return (
-    <button onClick={onClick} className={clsx(baseStyle, variants[variant as keyof typeof variants], className)}>
-      {children}
-    </button>
-  );
-};
 
 const Modal = ({ isOpen, onClose, title, children }: any) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
       <div className="absolute inset-0" onClick={onClose} />
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-surface border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative z-10 max-h-[90vh] flex flex-col"
+        initial={{ opacity: 0, scale: 0.95, y: 50 }} 
+        animate={{ opacity: 1, scale: 1, y: 0 }} 
+        className="bg-white border border-gray-100 rounded-t-[3rem] sm:rounded-[3rem] w-full max-w-lg shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]"
       >
-        <div className="p-4 border-b border-border flex justify-between items-center bg-background/50">
-          <h3 className="font-semibold text-lg text-textMain">{title}</h3>
-          <button onClick={onClose}><X size={20} className="text-textMuted hover:text-textMain" /></button>
+        <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-white sticky top-0 z-10">
+          <h3 className="font-black text-xl text-gray-900 tracking-tight">{title}</h3>
+          <button onClick={onClose} className="p-2 hover:bg-gray-50 rounded-full transition-colors"><X size={24} className="text-gray-400" /></button>
         </div>
-        <div className="p-6 overflow-y-auto custom-scrollbar">
-          {children}
-        </div>
+        <div className="p-10 overflow-y-auto custom-scrollbar bg-white">{children}</div>
       </motion.div>
     </div>
   );
 };
 
-// --- Settings Modal Component ---
-const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { currentWorkspace, updateWorkspaceSettings, addCategory, deleteCategory, theme, setTheme } = useStore();
-  const [activeTab, setActiveTab] = useState<'general' | 'categories' | 'appearance'>('general');
-  const [newCat, setNewCat] = useState('');
-
-  if (!isOpen || !currentWorkspace) return null;
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Settings">
-      <div className="flex gap-2 mb-6 border-b border-border pb-2 overflow-x-auto">
-        {['General', 'Categories', 'Appearance'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab.toLowerCase() as any)}
-            className={clsx(
-              "px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap",
-              activeTab === tab.toLowerCase() 
-                ? "bg-primary/10 text-primary" 
-                : "text-textMuted hover:text-textMain"
-            )}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'general' && (
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-textMuted uppercase mb-1 block">Workspace Name</label>
-            <input 
-              value={currentWorkspace.name}
-              onChange={(e) => updateWorkspaceSettings({ name: e.target.value })}
-              className="w-full bg-background border border-border rounded-lg p-3 text-textMain outline-none focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-textMuted uppercase mb-1 block">Default Currency</label>
-            <select
-              value={currentWorkspace.currency}
-              onChange={(e) => updateWorkspaceSettings({ currency: e.target.value })}
-              className="w-full bg-background border border-border rounded-lg p-3 text-textMain outline-none focus:border-primary"
-            >
-              <option value="$">USD ($)</option>
-              <option value="€">EUR (€)</option>
-              <option value="£">GBP (£)</option>
-              <option value="¥">JPY (¥)</option>
-              <option value="₹">INR (₹)</option>
-              <option value="₿">BTC (₿)</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'categories' && (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input 
-              placeholder="New Category (e.g. Hospital)" 
-              value={newCat}
-              onChange={(e) => setNewCat(e.target.value)}
-              className="flex-1 bg-background border border-border rounded-lg p-2 text-textMain outline-none focus:border-primary text-sm"
-            />
-            <Button onClick={() => { if(newCat) { addCategory(newCat); setNewCat(''); } }}>Add</Button>
-          </div>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {currentWorkspace.categories.map(cat => (
-              <div key={cat} className="flex justify-between items-center bg-background/50 p-2 rounded border border-border/50">
-                <span className="text-sm text-textMain">{cat}</span>
-                <button onClick={() => deleteCategory(cat)} className="text-textMuted hover:text-red-500 p-1">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'appearance' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-background border border-border rounded-xl">
-             <div className="flex items-center gap-3">
-               {theme === 'dark' ? <Moon size={20} className="text-primary" /> : <Sun size={20} className="text-primary" />}
-               <div>
-                 <div className="font-medium text-textMain">App Theme</div>
-                 <div className="text-xs text-textMuted">Toggle between light and dark mode</div>
-               </div>
-             </div>
-             <button 
-               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-               className={clsx(
-                 "w-12 h-6 rounded-full p-1 transition-colors relative",
-                 theme === 'dark' ? "bg-primary" : "bg-border"
-               )}
-             >
-               <div className={clsx("w-4 h-4 rounded-full bg-white shadow-sm transition-transform", theme === 'dark' ? "translate-x-6" : "translate-x-0")} />
-             </button>
-          </div>
-        </div>
-      )}
-    </Modal>
-  );
-};
-
-// --- Sidebar ---
-
-const SidebarContent = ({ onCloseMobile }: { onCloseMobile?: () => void }) => {
-  const { workspaces, currentWorkspace, selectWorkspace, createWorkspace, logout, user, adminView, setAdminView } = useStore();
-  const [isCreating, setIsCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newName.trim()) {
-      await createWorkspace(newName);
-      setNewName('');
-      setIsCreating(false);
-    }
-  };
-
-  const handleSelect = (id: string) => {
-    selectWorkspace(id);
-    if(adminView) setAdminView(false); // Switch back to user view on click
-    if (onCloseMobile) onCloseMobile();
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-surface/95 backdrop-blur-xl border-r border-border">
-      <div className="p-6 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
-            O
-          </div>
-          <span className="font-bold text-xl tracking-tight text-textMain">OrbitFinance</span>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {user?.role === 'admin' && (
-          <button 
-             onClick={() => { setAdminView(!adminView); if(onCloseMobile) onCloseMobile(); }}
-             className={clsx(
-               "w-full text-left px-4 py-3 rounded-xl flex items-center justify-between group transition-all mb-4",
-               adminView ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10"
-             )}
-          >
-             <span className="font-medium flex items-center gap-2"><Shield size={16}/> Admin Panel</span>
-          </button>
-        )}
-
-        <div className="text-xs font-semibold text-textMuted uppercase tracking-wider mb-2 px-2">Workspaces</div>
-        
-        {workspaces.map(w => (
-          <button
-            key={w.id}
-            onClick={() => handleSelect(w.id)}
-            className={clsx(
-              "w-full text-left px-4 py-3 rounded-xl flex items-center justify-between group transition-all duration-200",
-              currentWorkspace?.id === w.id && !adminView
-                ? "bg-primary text-white shadow-md shadow-primary/20" 
-                : "text-textMuted hover:bg-background/80 hover:text-textMain"
-            )}
-          >
-            <span className="font-medium truncate">{w.name}</span>
-            {w.members.length > 1 && <Users size={14} className="opacity-70" />}
-          </button>
-        ))}
-
-        {isCreating ? (
-          <form onSubmit={handleCreate} className="mt-2 p-2 bg-background/50 rounded-lg border border-border animate-fade-in">
-            <input
-              autoFocus
-              className="w-full bg-transparent outline-none text-sm text-textMain placeholder-textMuted mb-2"
-              placeholder="Tracker Name..."
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="text-xs bg-primary px-2 py-1 rounded text-white hover:bg-primaryHover">Add</button>
-              <button onClick={() => setIsCreating(false)} className="text-xs text-textMuted px-2 py-1 hover:text-textMain">Cancel</button>
-            </div>
-          </form>
-        ) : (
-          <button 
-            onClick={() => setIsCreating(true)}
-            className="w-full mt-2 flex items-center gap-2 px-4 py-2 text-sm text-primary hover:text-primaryHover font-medium hover:bg-primary/5 rounded-lg transition-colors"
-          >
-            <Plus size={16} /> New Tracker
-          </button>
-        )}
-      </div>
-
-      <div className="p-4 border-t border-border/50 bg-background/30">
-        <div className="flex items-center gap-3 mb-4 px-2">
-          <img src={user?.avatarUrl} alt="profile" className="w-9 h-9 rounded-full bg-gray-700 border border-border" />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate text-textMain">{user?.name}</div>
-            <div className="text-xs text-textMuted truncate">{user?.email}</div>
-          </div>
-        </div>
-        <Button variant="secondary" className="w-full" onClick={logout}>
-          <LogOut size={16} /> Sign Out
-        </Button>
-        
-        <div className="mt-4 text-center">
-           <a 
-            href="https://cordulatech.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-textMuted hover:text-primary transition-colors font-semibold"
-           >
-             Product of Cordulatech
-             <ExternalLink size={8} />
-           </a>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Main Dashboard ---
-
 export const Dashboard: React.FC = () => {
-  const { currentWorkspace, transactions, addTransaction, editTransaction, deleteTransaction, inviteMember, user, adminView } = useStore();
-  
-  // State
-  const [txForm, setTxForm] = useState({ desc: '', amount: '', cat: '', type: 'expense' as const });
-  const [editingTxId, setEditingTxId] = useState<string | null>(null);
-  
-  const [showShare, setShowShare] = useState(false);
+  const { 
+    currentWorkspace, transactions, addTransaction, deleteTransaction, 
+    user, logout, updateUser, deleteAccount, updateWorkspace, removeMember, inviteMember,
+    getAiFinancialAdvice, aiAnalysis, isAiLoading
+  } = useStore();
+
+  const [txForm, setTxForm] = useState({ desc: '', amount: '', cat: 'Food', type: 'expense' as TransactionType });
   const [showSettings, setShowSettings] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'members' | 'about'>('general');
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-
-  // Set default category
-  useEffect(() => {
-    if (currentWorkspace?.categories.length && !txForm.cat) {
-      setTxForm(prev => ({ ...prev, cat: currentWorkspace.categories[0] }));
-    }
-  }, [currentWorkspace]);
-
-  // Stats
-  const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-  const expense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-  const balance = income - expense;
-
-  const chartData: CategoryData[] = useMemo(() => {
-    const expenses = transactions.filter(t => t.type === 'expense');
-    const categories: Record<string, number> = {};
-    expenses.forEach(t => categories[t.category] = (categories[t.category] || 0) + t.amount);
-    return Object.entries(categories).map(([name, value]) => ({ name, value, color: '' }));
+  
+  const currencySymbol = useMemo(() => getCurrencySymbol(currentWorkspace?.currencyCode || 'USD'), [currentWorkspace]);
+  const balance = transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+  
+  const chartData = useMemo(() => {
+    const cats: Record<string, number> = {};
+    transactions.filter(t => t.type === 'expense').forEach(t => cats[t.category] = (cats[t.category] || 0) + t.amount);
+    return Object.entries(cats).map(([name, value]) => ({ name, value, color: '' }));
   }, [transactions]);
 
-  const handleSubmitTx = async (e: React.FormEvent) => {
+  const handleAddTx = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!txForm.desc || !txForm.amount) return;
-    
-    const amountVal = parseFloat(txForm.amount);
-
-    if (editingTxId) {
-      await editTransaction(editingTxId, {
-        description: txForm.desc,
-        amount: amountVal,
-        category: txForm.cat,
-        type: txForm.type
-      });
-      setEditingTxId(null);
-    } else {
-      await addTransaction({
-        description: txForm.desc,
-        amount: amountVal,
-        category: txForm.cat,
-        type: txForm.type,
-        date: new Date().toISOString()
-      });
-    }
-    setTxForm({ desc: '', amount: '', cat: currentWorkspace?.categories[0] || '', type: 'expense' });
+    const amt = parseFloat(txForm.amount);
+    if (isNaN(amt) || amt <= 0 || !txForm.desc) return;
+    addTransaction({ description: txForm.desc, amount: amt, category: txForm.cat, type: txForm.type });
+    setTxForm({ ...txForm, desc: '', amount: '' });
   };
-
-  const handleEditClick = (tx: Transaction) => {
-    setTxForm({
-      desc: tx.description,
-      amount: tx.amount.toString(),
-      cat: tx.category,
-      type: tx.type
-    });
-    setEditingTxId(tx.id);
-    // Scroll to form on mobile
-    document.getElementById('tx-form')?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if(inviteEmail) {
-      await inviteMember(inviteEmail);
-      setInviteEmail('');
-      setShowShare(false);
-    }
-  }
-
-  // --- Render ---
 
   return (
-    <div className="flex h-screen w-full relative z-10 text-textMain">
+    <div className="flex h-screen w-full bg-[#FBFBFD] text-[#1D1D1F] font-sans overflow-hidden">
       
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block h-full w-64">
-        <SidebarContent />
-      </div>
+      {/* Sidebar Desktop */}
+      <aside className="hidden md:flex w-80 bg-white border-r border-gray-100 flex-col p-8">
+        <div className="flex items-center gap-3 mb-16">
+          <div className="w-12 h-12 rounded-[1.2rem] bg-indigo-600 flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100">O</div>
+          <h1 className="text-2xl font-black tracking-tighter">OrbitFinance</h1>
+        </div>
+        <nav className="flex-1 space-y-2">
+          <button className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl bg-indigo-50 text-indigo-600 font-black text-sm uppercase tracking-widest"><LayoutGrid size={18}/> Dashboard</button>
+          <button onClick={() => getAiFinancialAdvice()} className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-400 font-black text-sm uppercase tracking-widest hover:bg-gray-50 hover:text-gray-900 transition-all">
+            <BrainCircuit size={18}/> AI Advisor
+            {/* Added Loader2 from lucide-react */}
+            {isAiLoading && <Loader2 className="ml-auto animate-spin" size={16} />}
+          </button>
+          <button onClick={() => setShowSettings(true)} className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-400 font-black text-sm uppercase tracking-widest hover:bg-gray-50 transition-all">
+            <Settings size={18}/> Settings
+          </button>
+        </nav>
+        <div className="mt-auto pt-10 border-t border-gray-100">
+           <button onClick={() => setShowUserModal(true)} className="w-full flex items-center gap-4 p-4 bg-gray-50 rounded-3xl hover:bg-gray-100 transition-all text-left">
+              <img src={user?.avatarUrl} className="w-12 h-12 rounded-2xl border-4 border-white shadow-sm" alt="U" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black truncate">{user?.name}</p>
+                <p className="text-[10px] font-bold text-gray-400 truncate uppercase tracking-widest">{user?.role}</p>
+              </div>
+           </button>
+        </div>
+      </aside>
 
-      {/* Mobile Drawer */}
+      {/* Main Panel */}
+      <main className="flex-1 flex flex-col h-full bg-[#FBFBFD] relative overflow-hidden">
+        <header className="h-24 flex justify-between items-center px-8 sm:px-12 border-b border-gray-100 bg-white/50 backdrop-blur-md z-40">
+           <div className="flex items-center gap-4">
+              <button onClick={() => setShowMobileNav(true)} className="md:hidden p-2 text-gray-400 hover:bg-gray-50 rounded-xl transition-all"><Menu size={28} /></button>
+              <h2 className="text-xl font-black tracking-tighter">{currentWorkspace?.name}</h2>
+           </div>
+           <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full font-black text-[10px] uppercase tracking-widest border border-emerald-100">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Status
+              </div>
+              <button onClick={logout} className="p-3 text-rose-500 hover:bg-rose-50 rounded-2xl transition-all"><LogOut size={22}/></button>
+           </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-6 sm:p-12 space-y-12 custom-scrollbar pb-32">
+          
+          {/* 1. Wallet / Balance (Top Priority) */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-5">
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="p-12 rounded-[3.5rem] bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-2xl shadow-indigo-100 relative overflow-hidden h-full flex flex-col justify-between">
+                <div className="absolute -top-10 -right-10 opacity-5 pointer-events-none rotate-12"><Wallet size={240} /></div>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Global Liquidity</p>
+                     <div className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5">Portfolio v4</div>
+                  </div>
+                  <h3 className="text-5xl sm:text-6xl font-black mb-4 tracking-tighter leading-none">{currencySymbol}{balance.toLocaleString()}</h3>
+                </div>
+                <div className="flex gap-4 mt-12">
+                   <div className="flex-1 p-5 bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/5">
+                      <p className="text-[9px] font-black opacity-50 uppercase mb-2 tracking-widest">Growth Index</p>
+                      <p className="text-lg font-black flex items-center gap-2 text-emerald-400"><ArrowUpRight size={18}/> 14.2%</p>
+                   </div>
+                   <div className="flex-1 p-5 bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/5">
+                      <p className="text-[9px] font-black opacity-50 uppercase mb-2 tracking-widest">System Health</p>
+                      <p className="text-lg font-black flex items-center gap-2 text-indigo-300">Optimum</p>
+                   </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* 2. Quick Add Transaction (Requested Top Move) */}
+            <div className="lg:col-span-7">
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="bg-white p-10 sm:p-12 rounded-[3.5rem] border border-gray-100 shadow-sm h-full flex flex-col">
+                <div className="flex items-center gap-3 mb-10">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm"><Plus size={20} /></div>
+                  <h3 className="font-black text-gray-900 text-2xl tracking-tight">Rapid Entry</h3>
+                </div>
+                <form onSubmit={handleAddTx} className="space-y-6 flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2">Label</label>
+                      <input 
+                        className="w-full bg-gray-50 border-none rounded-[1.5rem] px-6 py-5 text-sm font-bold focus:ring-4 ring-indigo-50 transition-all placeholder:text-gray-300" 
+                        placeholder="e.g. Monthly Rent" value={txForm.desc} onChange={e => setTxForm({...txForm, desc: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 px-2">Value</label>
+                      <div className="relative">
+                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 font-black">{currencySymbol}</span>
+                        <input 
+                          type="number" step="0.01" className="w-full bg-gray-50 border-none rounded-[1.5rem] pl-12 pr-6 py-5 text-sm font-black focus:ring-4 ring-indigo-50 transition-all" 
+                          placeholder="0.00" value={txForm.amount} onChange={e => setTxForm({...txForm, amount: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {currentWorkspace?.categories.slice(0, 6).map(c => (
+                      <button key={c} type="button" onClick={() => setTxForm({...txForm, cat: c})} className={clsx("px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all", txForm.cat === c ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "bg-gray-50 text-gray-400 hover:bg-gray-100")}>{c}</button>
+                    ))}
+                  </div>
+                  <div className="flex gap-4 pt-4">
+                    <button type="button" onClick={() => setTxForm({...txForm, type: 'expense'})} className={clsx("flex-1 py-5 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all border-2", txForm.type === 'expense' ? "bg-rose-500 text-white border-rose-500 shadow-2xl shadow-rose-100" : "bg-white text-gray-400 border-gray-100")}>Withdraw</button>
+                    <button type="button" onClick={() => setTxForm({...txForm, type: 'income'})} className={clsx("flex-1 py-5 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all border-2", txForm.type === 'income' ? "bg-emerald-500 text-white border-emerald-500 shadow-2xl shadow-emerald-100" : "bg-white text-gray-400 border-gray-100")}>Deposit</button>
+                    <button type="submit" className="w-24 bg-gray-900 text-white rounded-[2rem] shadow-2xl hover:bg-black transition-all flex items-center justify-center"><ArrowRight size={28} /></button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* AI Block */}
+          <AnimatePresence>
+            {aiAnalysis && (
+              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }} className="p-10 rounded-[3.5rem] bg-white border border-indigo-100 relative overflow-hidden shadow-2xl shadow-indigo-50">
+                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><BrainCircuit size={180} className="text-indigo-600" /></div>
+                <div className="flex flex-col sm:flex-row gap-8 items-start relative z-10">
+                   <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shrink-0 shadow-2xl shadow-indigo-200"><Sparkles size={36} /></div>
+                   <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-6">
+                        <h4 className="font-black text-gray-900 text-2xl tracking-tighter">Fiscal Intelligence Analysis</h4>
+                        <div className="bg-indigo-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Gemini Engine</div>
+                      </div>
+                      <div className="text-base text-gray-600 leading-relaxed font-medium whitespace-pre-wrap prose prose-indigo max-w-none prose-sm">{aiAnalysis}</div>
+                      <button onClick={() => getAiFinancialAdvice()} className="mt-8 text-[11px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 flex items-center gap-2">Re-Analyze Records <ChevronRight size={14}/></button>
+                   </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 3. Activity Feed (Middle-Bottom) */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+             <div className="lg:col-span-6 space-y-6">
+                <div className="flex justify-between items-center px-6">
+                  <div className="flex items-center gap-3">
+                    <History size={20} className="text-gray-400" />
+                    <h3 className="font-black text-gray-900 tracking-tight text-2xl">Ledger Activity</h3>
+                  </div>
+                  <button className="text-[10px] font-black uppercase tracking-widest text-indigo-600 border-b-2 border-indigo-600/20 pb-1">Archive</button>
+                </div>
+                <div className="space-y-4">
+                  {transactions.slice(0, 6).map((t, idx) => (
+                    <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: idx * 0.05 }} layout key={t.id} className="p-6 bg-white rounded-[2.5rem] border border-gray-100 flex items-center justify-between group hover:shadow-2xl hover:shadow-indigo-50 transition-all border-l-8" style={{ borderLeftColor: t.type === 'income' ? '#10B981' : '#F43F5E' }}>
+                      <div className="flex items-center gap-5">
+                        <div className={clsx("w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm", t.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+                          {t.type === 'income' ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-base font-black text-gray-900 truncate">{t.description}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.category} • {new Date(t.date).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className={clsx("text-lg font-black tracking-tighter", t.type === 'income' ? "text-emerald-500" : "text-gray-900")}>
+                          {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toLocaleString()}
+                        </span>
+                        <button onClick={() => deleteTransaction(t.id)} className="p-2 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-rose-500 transition-all bg-gray-50 rounded-xl"><Trash2 size={18} /></button>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {transactions.length === 0 && <div className="text-center py-16 text-gray-300 font-bold italic border-2 border-dashed border-gray-100 rounded-[3rem]">No synchronized records found.</div>}
+                </div>
+             </div>
+
+             {/* 4. Visual Analysis (Bottom) */}
+             <div className="lg:col-span-6">
+                <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.3 }} className="bg-white p-12 rounded-[3.5rem] border border-gray-100 h-full shadow-sm flex flex-col">
+                  <div className="flex justify-between items-center mb-10">
+                    <h3 className="font-black text-gray-900 tracking-tight text-2xl">Segment Distribution</h3>
+                    <div className="bg-gray-50 p-4 rounded-[1.5rem] text-gray-400"><LayoutGrid size={24} /></div>
+                  </div>
+                  <div className="flex-1 min-h-[400px]">
+                    {chartData.length > 0 ? (
+                      <ExpenseChart3D data={chartData} currencySymbol={currencySymbol} />
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-gray-200 gap-6 opacity-40">
+                        <History size={100} strokeWidth={1} />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Synchronization Required</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+             </div>
+          </section>
+        </div>
+      </main>
+
+      {/* Settings Modal */}
+      <Modal isOpen={showSettings} onClose={() => setShowSettings(false)} title="Workspace Engine">
+         <div className="flex gap-2 mb-10 bg-gray-100 p-1.5 rounded-[1.5rem]">
+           {(['general', 'members', 'about'] as const).map(tab => (
+             <button 
+               key={tab}
+               onClick={() => setSettingsTab(tab)}
+               className={clsx("flex-1 py-4 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all", 
+               settingsTab === tab ? "bg-white text-indigo-600 shadow-xl shadow-indigo-50" : "text-gray-400 hover:text-gray-600")}
+             >
+               {tab}
+             </button>
+           ))}
+         </div>
+
+         {settingsTab === 'general' && (
+           <div className="space-y-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 block">Workspace Name</label>
+                <input className="w-full bg-gray-50 rounded-[1.5rem] p-6 text-sm font-bold border-none ring-2 ring-gray-100 focus:ring-4 ring-indigo-50 transition-all" value={currentWorkspace?.name} onChange={e => updateWorkspace({ name: e.target.value })} />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 block">Preferred Currency</label>
+                <select className="w-full bg-gray-50 rounded-[1.5rem] p-6 text-sm font-bold border-none ring-2 ring-gray-100 appearance-none focus:ring-4 ring-indigo-50 transition-all" value={currentWorkspace?.currencyCode} onChange={e => updateWorkspace({ currencyCode: e.target.value })}>
+                  {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.name} ({c.symbol})</option>)}
+                </select>
+              </div>
+           </div>
+         )}
+
+         {settingsTab === 'members' && (
+           <div className="space-y-8">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 block">Synchronized Members</label>
+              <div className="space-y-4 max-h-72 overflow-y-auto pr-3 custom-scrollbar">
+                  {currentWorkspace?.members.map(m => (
+                    <div key={m} className="flex items-center justify-between p-5 bg-gray-50 rounded-[2rem] border border-gray-100 group transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xs font-black uppercase shadow-lg shadow-indigo-100">{m[0]}</div>
+                        <span className="text-xs font-black truncate max-w-[180px]">{m}</span>
+                      </div>
+                      {m !== user?.email && currentWorkspace?.ownerId === user?.id && (
+                        <button onClick={() => removeMember(m)} className="p-3 text-rose-500 hover:bg-rose-100 rounded-2xl transition-all" title="Terminate Access"><Trash2 size={20} /></button>
+                      )}
+                      {m === user?.email && <div className="px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full text-[9px] font-black uppercase">Owner</div>}
+                    </div>
+                  ))}
+              </div>
+              <div className="pt-6 border-t border-gray-100 flex gap-3">
+                 <input className="flex-1 bg-gray-50 rounded-[1.5rem] p-5 text-xs font-bold border-none ring-2 ring-gray-100 focus:ring-4 ring-indigo-50 transition-all" placeholder="Invite via email..." value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+                 <button onClick={() => { inviteMember(inviteEmail); setInviteEmail(''); }} className="px-8 bg-gray-900 text-white rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">Invite</button>
+              </div>
+           </div>
+         )}
+
+         {settingsTab === 'about' && (
+           <div className="text-center py-10">
+              <div className="w-24 h-24 rounded-[2rem] bg-indigo-600 flex items-center justify-center text-white font-black text-5xl mx-auto mb-8 shadow-2xl shadow-indigo-100">O</div>
+              <h4 className="text-3xl font-black text-gray-900 tracking-tighter mb-2">OrbitFinance</h4>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-10">v2.5.0 Stable Alpha</p>
+              <div className="bg-gray-50 rounded-[2.5rem] p-10 border border-gray-100 shadow-sm">
+                 <p className="text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[0.2em]">Global Distribution By</p>
+                 <a href="https://cordulatech.com" target="_blank" rel="noopener" className="text-gray-900 font-black text-2xl hover:text-indigo-600 transition-all flex items-center justify-center gap-3">
+                    Cordulatech <ExternalLink size={24} />
+                 </a>
+              </div>
+           </div>
+         )}
+      </Modal>
+
+      {/* User Modal */}
+      <Modal isOpen={showUserModal} onClose={() => setShowUserModal(false)} title="Identity Profile">
+         <div className="space-y-12">
+            <div className="flex flex-col items-center">
+              <div className="relative mb-6">
+                <img src={user?.avatarUrl} className="w-40 h-40 rounded-[4rem] bg-gray-100 border-[12px] border-white shadow-2xl" alt="avatar" />
+                <div className="absolute bottom-2 right-2 bg-indigo-600 p-3 rounded-[1.5rem] text-white shadow-2xl"><UserCog size={24} /></div>
+              </div>
+              <h4 className="text-3xl font-black tracking-tighter text-gray-900">{user?.name}</h4>
+              <p className="text-sm font-bold text-gray-400 tracking-wide">{user?.email}</p>
+            </div>
+            
+            <div className="space-y-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 block">System Nickname</label>
+                <input className="w-full bg-gray-50 rounded-[1.5rem] p-6 text-sm font-bold border-none ring-2 ring-gray-100 focus:ring-4 ring-indigo-50 transition-all" defaultValue={user?.name} onBlur={e => updateUser({ name: e.target.value })} />
+              </div>
+              
+              <div className="p-10 bg-rose-50 rounded-[3rem] border border-rose-100 mt-16 shadow-inner shadow-rose-100/50">
+                <div className="flex items-center gap-3 mb-6 text-rose-600">
+                  <ShieldAlert size={24} />
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em]">Danger Zone</p>
+                </div>
+                <p className="text-xs text-rose-700/80 mb-10 font-semibold leading-relaxed">Closing your account is irreversible. All associated financial syncs, workspace histories, and metadata will be permanently purged.</p>
+                <button onClick={() => confirm("ARE YOU SURE? All data will be purged.") && deleteAccount()} className="w-full py-6 bg-rose-500 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-widest shadow-2xl shadow-rose-100 hover:bg-rose-600 transition-all">Destroy Account</button>
+              </div>
+            </div>
+         </div>
+      </Modal>
+
+      {/* Mobile Nav */}
       <AnimatePresence>
-        {showMobileMenu && (
-          <div className="fixed inset-0 z-50 md:hidden">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowMobileMenu(false)} />
-            <motion.div 
-              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25 }}
-              className="absolute left-0 top-0 bottom-0 w-3/4 max-w-xs h-full"
-            >
-              <SidebarContent onCloseMobile={() => setShowMobileMenu(false)} />
-            </motion.div>
+        {showMobileNav && (
+          <div className="fixed inset-0 z-[100] md:hidden">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowMobileNav(false)} />
+            <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25 }} className="absolute left-0 top-0 bottom-0 w-4/5 max-w-sm bg-white p-10 shadow-2xl flex flex-col rounded-r-[3rem]">
+              <div className="flex items-center gap-4 mb-16">
+                <div className="w-12 h-12 rounded-[1.2rem] bg-indigo-600 flex items-center justify-center text-white font-black text-2xl">O</div>
+                <h1 className="text-2xl font-black tracking-tighter">OrbitFinance</h1>
+              </div>
+              <nav className="space-y-4">
+                <button onClick={() => setShowMobileNav(false)} className="w-full flex items-center gap-4 px-6 py-5 rounded-[1.5rem] bg-indigo-50 text-indigo-600 font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-100/20"><LayoutGrid size={20}/> Dashboard</button>
+                <button onClick={() => { getAiFinancialAdvice(); setShowMobileNav(false); }} className="w-full flex items-center gap-4 px-6 py-5 rounded-[1.5rem] text-gray-400 font-black text-sm uppercase tracking-widest hover:bg-gray-50"><BrainCircuit size={20}/> AI Advisor</button>
+                <button onClick={() => { setShowSettings(true); setShowMobileNav(false); }} className="w-full flex items-center gap-4 px-6 py-5 rounded-[1.5rem] text-gray-400 font-black text-sm uppercase tracking-widest hover:bg-gray-50"><Settings size={20}/> Settings</button>
+              </nav>
+            </motion.aside>
           </div>
         )}
       </AnimatePresence>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Topbar */}
-        <header className="h-16 border-b border-border bg-surface/50 backdrop-blur-md flex justify-between items-center px-4 md:px-6 z-20">
-          <div className="flex items-center gap-3">
-             <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 text-textMain hover:bg-background/50 rounded-lg">
-                <Menu size={24} />
-             </button>
-             <div>
-                <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2">
-                  {adminView ? 'Admin Dashboard' : currentWorkspace?.name}
-                  {!adminView && (
-                    <span className="text-[10px] uppercase bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20 tracking-wider">
-                      {currentWorkspace?.members.length === 1 ? 'Personal' : 'Team'}
-                    </span>
-                  )}
-                </h2>
-             </div>
-          </div>
-          {!adminView && (
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setShowSettings(true)} className="px-3">
-                <Settings size={18} /> <span className="hidden sm:inline">Settings</span>
-              </Button>
-              <Button variant="secondary" onClick={() => setShowShare(true)} className="px-3">
-                <Share2 size={18} /> <span className="hidden sm:inline">Share</span>
-              </Button>
-            </div>
-          )}
-        </header>
-
-        {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
-          
-          {adminView ? (
-             <AdminPanel />
-          ) : (
-            <div className="max-w-6xl mx-auto space-y-6">
-              
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="flex flex-col justify-between h-32 relative overflow-hidden">
-                  <div className="relative z-10">
-                     <div className="text-textMuted text-sm font-medium uppercase tracking-wider">Total Balance</div>
-                     <div className="text-3xl font-bold mt-1 text-textMain">{currentWorkspace?.currency}{balance.toLocaleString()}</div>
-                  </div>
-                  <div className="relative z-10 text-xs text-textMuted flex items-center gap-1">
-                     <Wallet size={12} /> Available Funds
-                  </div>
-                  {/* Background Decor */}
-                  <div className="absolute right-[-20px] bottom-[-20px] opacity-5 text-textMain">
-                    <Wallet size={100} />
-                  </div>
-                </Card>
-
-                <Card className="flex flex-col justify-between h-32">
-                  <div>
-                     <div className="text-textMuted text-sm font-medium uppercase tracking-wider">Income</div>
-                     <div className="text-3xl font-bold mt-1 text-secondary">+{currentWorkspace?.currency}{income.toLocaleString()}</div>
-                  </div>
-                  <div className="w-full bg-secondary/10 h-1.5 mt-2 rounded-full overflow-hidden">
-                    <div className="bg-secondary h-full rounded-full" style={{ width: '100%' }}></div>
-                  </div>
-                </Card>
-
-                <Card className="flex flex-col justify-between h-32">
-                  <div>
-                    <div className="text-textMuted text-sm font-medium uppercase tracking-wider">Expenses</div>
-                    <div className="text-3xl font-bold mt-1 text-accent">-{currentWorkspace?.currency}{expense.toLocaleString()}</div>
-                  </div>
-                  <div className="w-full bg-accent/10 h-1.5 mt-2 rounded-full overflow-hidden">
-                    <div className="bg-accent h-full rounded-full" style={{ width: `${income > 0 ? Math.min((expense/income)*100, 100) : 0}%` }}></div>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Split View: Chart & Transactions */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
-                {/* Left Column: Chart & Add Form */}
-                <div className="lg:col-span-7 space-y-6">
-                  <Card className="min-h-[400px]">
-                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-lg text-textMain">Spending Breakdown</h3>
-                     </div>
-                     {chartData.length > 0 ? (
-                        <ExpenseChart3D data={chartData} currencySymbol={currentWorkspace?.currency || '$'} />
-                     ) : (
-                        <div className="h-64 flex flex-col items-center justify-center text-textMuted gap-2">
-                          <div className="p-4 bg-background/50 rounded-full">
-                             <LayoutGrid size={32} />
-                          </div>
-                          <p>No expenses recorded yet.</p>
-                        </div>
-                     )}
-                  </Card>
-
-                  <Card>
-                    <div className="flex justify-between items-center mb-4" id="tx-form">
-                       <h3 className="font-semibold text-textMain">{editingTxId ? 'Edit Transaction' : 'Add Transaction'}</h3>
-                       {editingTxId && (
-                          <button onClick={() => { setEditingTxId(null); setTxForm({ desc: '', amount: '', cat: currentWorkspace?.categories[0] || '', type: 'expense' }) }} className="text-xs text-textMuted hover:text-textMain">
-                            Cancel Edit
-                          </button>
-                       )}
-                    </div>
-                    <form onSubmit={handleSubmitTx} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-3 p-1 bg-background rounded-lg border border-border">
-                         <button 
-                           type="button"
-                           onClick={() => setTxForm({...txForm, type: 'expense'})}
-                           className={clsx("py-2 rounded-md text-sm font-medium transition-all", txForm.type === 'expense' ? "bg-accent/10 text-accent shadow-sm" : "text-textMuted hover:text-textMain")}
-                         >
-                           Expense
-                         </button>
-                         <button 
-                           type="button"
-                           onClick={() => setTxForm({...txForm, type: 'income'})}
-                           className={clsx("py-2 rounded-md text-sm font-medium transition-all", txForm.type === 'income' ? "bg-secondary/10 text-secondary shadow-sm" : "text-textMuted hover:text-textMain")}
-                         >
-                           Income
-                         </button>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <input 
-                          type="text" placeholder="Description (e.g. Taxi, Lunch)" required
-                          value={txForm.desc} onChange={e => setTxForm({...txForm, desc: e.target.value})}
-                          className="flex-1 bg-background border border-border rounded-lg px-4 py-3 text-textMain outline-none focus:border-primary transition-colors"
-                        />
-                        <input 
-                          type="number" placeholder="0.00" required step="0.01"
-                          value={txForm.amount} onChange={e => setTxForm({...txForm, amount: e.target.value})}
-                          className="w-full sm:w-32 bg-background border border-border rounded-lg px-4 py-3 text-textMain outline-none focus:border-primary transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <select 
-                          value={txForm.cat} onChange={e => setTxForm({...txForm, cat: e.target.value})}
-                          className="w-full bg-background border border-border rounded-lg px-4 py-3 text-textMain outline-none focus:border-primary transition-colors"
-                        >
-                           {currentWorkspace?.categories.map(cat => (
-                             <option key={cat} value={cat}>{cat}</option>
-                           ))}
-                        </select>
-                        <div className="text-right mt-1">
-                          <button type="button" onClick={() => setShowSettings(true)} className="text-[10px] text-primary hover:underline">Manage Categories</button>
-                        </div>
-                      </div>
-                      <Button className="w-full py-3" type="submit">
-                        {editingTxId ? <><CheckCircle size={18} /> Update Entry</> : <><Plus size={18} /> Add Entry</>}
-                      </Button>
-                    </form>
-                  </Card>
-                </div>
-
-                {/* Right Column: Transaction History */}
-                <div className="lg:col-span-5">
-                  <Card className="h-full max-h-[800px] flex flex-col">
-                    <h3 className="font-semibold mb-4 text-textMain">Recent Activity</h3>
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                      <AnimatePresence>
-                        {transactions.length === 0 && <div className="text-textMuted text-center py-8">No activity.</div>}
-                        {transactions.map(t => (
-                          <motion.div
-                             key={t.id}
-                             initial={{ opacity: 0, x: 20 }}
-                             animate={{ opacity: 1, x: 0 }}
-                             exit={{ opacity: 0 }}
-                             className={clsx(
-                               "border rounded-lg p-3 flex justify-between items-center group transition-colors",
-                               editingTxId === t.id 
-                                 ? "bg-primary/5 border-primary" 
-                                 : "bg-background/40 border-border/50 hover:border-border hover:bg-background/60"
-                             )}
-                          >
-                             <div className="flex items-center gap-3">
-                                <div className={clsx("w-8 h-8 rounded-full flex items-center justify-center shrink-0", t.type === 'income' ? "bg-secondary/10 text-secondary" : "bg-accent/10 text-accent")}>
-                                   {t.type === 'income' ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                </div>
-                                <div className="min-w-0">
-                                   <div className="font-medium text-sm text-textMain truncate">{t.description}</div>
-                                   <div className="text-xs text-textMuted flex items-center gap-1 truncate">
-                                      {t.category} • {new Date(t.date).toLocaleDateString()}
-                                   </div>
-                                </div>
-                             </div>
-                             <div className="flex items-center gap-3 shrink-0">
-                                <span className={clsx("font-semibold text-sm", t.type === 'income' ? "text-secondary" : "text-textMain")}>
-                                   {t.type === 'income' ? '+' : '-'}{currentWorkspace?.currency}{t.amount}
-                                </span>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => handleEditClick(t)} className="p-1.5 text-textMuted hover:text-primary hover:bg-background rounded">
-                                     <Edit2 size={14} />
-                                  </button>
-                                  <button onClick={() => deleteTransaction(t.id)} className="p-1.5 text-textMuted hover:text-red-500 hover:bg-background rounded">
-                                     <Trash2 size={14} />
-                                  </button>
-                                </div>
-                             </div>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Settings Modal */}
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
-
-      {/* Share Modal */}
-      <Modal isOpen={showShare} onClose={() => setShowShare(false)} title="Share Workspace">
-        <p className="text-textMuted text-sm mb-4">Invite friends or family to <b>{currentWorkspace?.name}</b> to track expenses together.</p>
-        <form onSubmit={handleInvite} className="space-y-4">
-           <div>
-              <label className="text-xs font-semibold text-textMain mb-1 block">Email Address</label>
-              <input 
-                type="email" required placeholder="friend@example.com"
-                value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                className="w-full bg-background border border-border rounded-lg p-3 text-textMain outline-none focus:border-primary"
-              />
-           </div>
-           <Button type="submit" className="w-full">Send Invite</Button>
-           
-           <div className="mt-4">
-              <label className="text-xs font-semibold text-textMuted mb-2 block">Current Members</label>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                 {currentWorkspace?.members.map(email => (
-                    <div key={email} className="flex items-center gap-2 text-sm text-textMain bg-background/50 p-2 rounded">
-                       <div className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-purple-500 flex items-center justify-center text-[10px] text-white">
-                          {email[0].toUpperCase()}
-                       </div>
-                       {email}
-                       {email === currentWorkspace.ownerId && <span className="text-[10px] bg-border px-1 rounded text-textMuted">Owner</span>}
-                    </div>
-                 ))}
-              </div>
-           </div>
-        </form>
-      </Modal>
     </div>
   );
 };

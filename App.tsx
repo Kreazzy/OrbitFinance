@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from './store';
 import ThreeBackground from './components/ThreeBackground';
 import { Dashboard } from './components/Dashboard';
+import { AdminPanel } from './components/AdminPanel';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, Check, Loader2, ShieldCheck, LayoutDashboard } from 'lucide-react';
 
 const AuthScreen = () => {
   const { login, register, resetPassword, isLoading } = useStore();
@@ -24,13 +25,13 @@ const AuthScreen = () => {
         await login(email, password);
       } else if (view === 'register') {
         if(!name) return setError("Name is required");
-        await register(email, name, password);
+        await register(email, name);
       } else if (view === 'forgot') {
         await resetPassword(email);
         setSuccessMsg("Check your email for reset instructions.");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred");
+      setError(err.message || "Authentication failed. Please check your credentials.");
     }
   };
 
@@ -38,53 +39,50 @@ const AuthScreen = () => {
     <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4">
       <motion.div 
         key={view}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-md bg-surface/80 backdrop-blur-xl border border-border p-8 rounded-2xl shadow-2xl relative overflow-hidden"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md bg-white border border-gray-100 p-8 sm:p-12 rounded-[3rem] shadow-2xl relative overflow-hidden"
       >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-accent"></div>
-        
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">OrbitFinance</h1>
-          <p className="text-textMuted text-sm">
-            {view === 'login' && "Welcome back, pilot."}
-            {view === 'register' && "Start your financial journey."}
-            {view === 'forgot' && "Recover your access."}
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-600 flex items-center justify-center text-white font-black text-3xl mx-auto mb-6 shadow-xl shadow-indigo-100">O</div>
+          <h1 className="text-3xl font-black tracking-tighter text-gray-900 mb-2">OrbitFinance</h1>
+          <p className="text-gray-400 font-bold text-[10px] uppercase tracking-[0.2em]">
+            {view === 'login' && "Access Vault"}
+            {view === 'register' && "Create Account"}
+            {view === 'forgot' && "Access Recovery"}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-           {error && <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-3 rounded">{error}</div>}
-           {successMsg && <div className="bg-green-500/10 border border-green-500/20 text-green-500 text-sm p-3 rounded flex items-center gap-2"><Check size={14}/> {successMsg}</div>}
+           {error && <div className="bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-black uppercase p-4 rounded-2xl">{error}</div>}
+           {successMsg && <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-bold p-4 rounded-2xl flex items-center gap-2"><Check size={14}/> {successMsg}</div>}
 
            {view === 'register' && (
-             <div>
-               <label className="block text-xs font-semibold text-textMuted uppercase mb-1">Full Name</label>
+             <div className="space-y-1">
+               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Full Name</label>
                <input 
                  type="text" required
-                 className="w-full bg-background/50 border border-border rounded-lg px-4 py-3 text-white outline-none focus:border-primary transition-colors"
+                 className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-50 transition-all"
                  value={name} onChange={e => setName(e.target.value)}
                />
              </div>
            )}
 
-           <div>
-             <label className="block text-xs font-semibold text-textMuted uppercase mb-1">Email Address</label>
+           <div className="space-y-1">
+             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Email Address</label>
              <input 
                type="email" required
-               className="w-full bg-background/50 border border-border rounded-lg px-4 py-3 text-white outline-none focus:border-primary transition-colors"
+               className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-50 transition-all"
                value={email} onChange={e => setEmail(e.target.value)}
              />
            </div>
 
            {view !== 'forgot' && (
-             <div>
-                <label className="block text-xs font-semibold text-textMuted uppercase mb-1">Password</label>
+             <div className="space-y-1">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Password</label>
                 <input 
                   type="password" required
-                  className="w-full bg-background/50 border border-border rounded-lg px-4 py-3 text-white outline-none focus:border-primary transition-colors"
+                  className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-50 transition-all"
                   value={password} onChange={e => setPassword(e.target.value)}
                 />
              </div>
@@ -93,38 +91,29 @@ const AuthScreen = () => {
            <button 
              type="submit" 
              disabled={isLoading}
-             className="w-full bg-primary hover:bg-primaryHover text-white font-semibold py-3 rounded-lg shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 mt-6"
+             className="w-full bg-gray-900 text-white font-black text-xs uppercase tracking-widest py-5 rounded-3xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 mt-8"
            >
              {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
                <>
                  {view === 'login' && "Sign In"}
-                 {view === 'register' && "Create Account"}
-                 {view === 'forgot' && "Send Reset Link"}
-                 {!isLoading && <ArrowRight size={18} />}
+                 {view === 'register' && "Get Started"}
+                 {view === 'forgot' && "Send Code"}
+                 <ArrowRight size={18} />
                </>
              )}
            </button>
         </form>
 
-        <div className="mt-6 flex flex-col items-center gap-3 text-sm">
+        <div className="mt-10 flex flex-col items-center gap-4 text-[10px] font-black uppercase tracking-widest">
            {view === 'login' && (
              <>
-                <button onClick={() => setView('forgot')} className="text-textMuted hover:text-white transition-colors">Forgot Password?</button>
-                <div className="text-textMuted">Don't have an account? <button onClick={() => setView('register')} className="text-primary hover:underline font-semibold">Sign Up</button></div>
+                <button onClick={() => setView('forgot')} className="text-gray-400 hover:text-indigo-600 transition-colors">Recovery</button>
+                <div className="text-gray-400">New? <button onClick={() => setView('register')} className="text-indigo-600">Register</button></div>
              </>
            )}
-           {view === 'register' && (
-             <div className="text-textMuted">Already have an account? <button onClick={() => setView('login')} className="text-primary hover:underline font-semibold">Log In</button></div>
+           {(view === 'register' || view === 'forgot') && (
+             <button onClick={() => setView('login')} className="text-indigo-600">Back to Login</button>
            )}
-           {view === 'forgot' && (
-             <button onClick={() => setView('login')} className="text-primary hover:underline font-semibold">Back to Login</button>
-           )}
-        </div>
-
-        <div className="mt-6 pt-6 border-t border-border/50 text-center">
-          <a href="https://cordulatech.com" target="_blank" rel="noreferrer" className="text-xs text-textMuted hover:text-primary transition-colors font-medium">
-            Made by Cordulatech
-          </a>
         </div>
       </motion.div>
     </div>
@@ -132,24 +121,41 @@ const AuthScreen = () => {
 };
 
 export default function App() {
-  const { isAuthenticated, isLoading, initApp } = useStore();
+  const { isAuthenticated, isLoading, initApp, user } = useStore();
+  const [isAdminView, setIsAdminView] = useState(false);
 
   useEffect(() => {
     initApp();
   }, [initApp]);
 
-  if (isLoading && !isAuthenticated) {
+  if (isLoading) {
     return (
-      <div className="h-screen w-full bg-background flex items-center justify-center">
-         <Loader2 className="text-primary animate-spin" size={40} />
+      <div className="h-screen w-full bg-background flex flex-col items-center justify-center gap-4">
+         <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-600 flex items-center justify-center text-white font-black text-3xl shadow-2xl animate-pulse">O</div>
+         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Syncing Orbit...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen font-sans text-textMain bg-background selection:bg-primary selection:text-white">
+    <div className="min-h-screen font-sans text-[#1D1D1F] bg-[#FBFBFD] selection:bg-indigo-600 selection:text-white">
       <ThreeBackground />
-      {isAuthenticated ? <Dashboard /> : <AuthScreen />}
+      {isAuthenticated ? (
+        <div className="relative z-10 flex h-screen overflow-hidden">
+           {/* Global Admin Toggle if user is admin */}
+           {user?.role === 'admin' && (
+             <button 
+               onClick={() => setIsAdminView(!isAdminView)}
+               className="fixed bottom-8 right-8 z-[110] bg-white border border-gray-100 p-4 rounded-full shadow-2xl text-indigo-600 flex items-center gap-2 font-black text-xs uppercase tracking-widest hover:scale-105 transition-all"
+             >
+               {isAdminView ? <><LayoutDashboard size={18} /> Dashboard</> : <><ShieldCheck size={18} /> Admin</>}
+             </button>
+           )}
+           {isAdminView ? <AdminPanel /> : <Dashboard />}
+        </div>
+      ) : (
+        <AuthScreen />
+      )}
     </div>
   );
 }

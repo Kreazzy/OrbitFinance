@@ -1,8 +1,8 @@
+
 import { Transaction, UserProfile, Workspace } from '../types';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-const STORAGE_KEY = 'orbit_finance_v4_data';
+const STORAGE_KEY = 'orbit_finance_v5_data';
 
 interface DbSchema {
   users: UserProfile[];
@@ -10,255 +10,136 @@ interface DbSchema {
   transactions: Transaction[];
 }
 
-// Initial Data
-const defaultUser: UserProfile = {
-  id: 'u1',
-  email: 'demo@orbit.com',
-  name: 'Demo User',
-  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-  role: 'user',
-  preferences: { theme: 'dark' }
-};
-
-const adminUser: UserProfile = {
-  id: 'admin1',
-  email: 'admin@orbit.com',
-  name: 'System Admin',
-  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
-  role: 'admin',
-  preferences: { theme: 'dark' }
-};
-
-const defaultWorkspace: Workspace = {
-  id: 'w1',
-  name: 'Personal Budget',
-  ownerId: 'u1',
-  members: ['demo@orbit.com'],
-  currency: '$',
-  categories: ['General', 'Food', 'Travel', 'Housing', 'Tech', 'Salary', 'Medical', 'Education']
-};
-
 const defaultData: DbSchema = {
-  users: [defaultUser, adminUser],
-  workspaces: [defaultWorkspace],
+  users: [
+    { id: 'u1', email: 'demo@orbit.com', name: 'Demo User', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', role: 'user', preferences: { theme: 'light' } },
+    { id: 'admin1', email: 'admin@orbit.com', name: 'System Admin', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', role: 'admin', preferences: { theme: 'light' } }
+  ],
+  workspaces: [
+    { id: 'w1', name: 'Main Wallet', ownerId: 'u1', members: ['demo@orbit.com'], currencyCode: 'USD', categories: ['General', 'Food', 'Rent', 'Freelance', 'Subscription', 'Health'] }
+  ],
   transactions: [
-    { id: 't1', workspaceId: 'w1', amount: 3200, category: 'Salary', description: 'Monthly Income', date: new Date().toISOString(), type: 'income', createdBy: 'demo@orbit.com' },
-    { id: 't2', workspaceId: 'w1', amount: 1200, category: 'Housing', description: 'Rent Payment', date: new Date().toISOString(), type: 'expense', createdBy: 'demo@orbit.com' },
-    { id: 't3', workspaceId: 'w1', amount: 150, category: 'Utilities', description: 'Internet & Power', date: new Date().toISOString(), type: 'expense', createdBy: 'demo@orbit.com' },
+    { id: 't1', workspaceId: 'w1', amount: 5000, category: 'Freelance', description: 'Web Project', date: new Date().toISOString(), type: 'income', createdBy: 'demo@orbit.com' },
+    { id: 't2', workspaceId: 'w1', amount: 1200, category: 'Rent', description: 'Monthly Apartment', date: new Date().toISOString(), type: 'expense', createdBy: 'demo@orbit.com' },
+    { id: 't3', workspaceId: 'w1', amount: 45, category: 'Food', description: 'Sushi Dinner', date: new Date().toISOString(), type: 'expense', createdBy: 'demo@orbit.com' }
   ]
 };
 
 const getDb = (): DbSchema => {
   const str = localStorage.getItem(STORAGE_KEY);
-  if (!str) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
-    return defaultData;
+  if (str) {
+    try {
+      return JSON.parse(str);
+    } catch {
+      return defaultData;
+    }
   }
-  return JSON.parse(str);
+  return defaultData;
 };
 
-const saveDb = (data: DbSchema) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-};
+const saveDb = (data: DbSchema) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
 export const mockDb = {
-  // --- AUTH ---
   async login(email: string): Promise<UserProfile> {
-    await delay(600);
+    await delay(300);
     const db = getDb();
-    let user = db.users.find(u => u.email === email);
+    const user = db.users.find(u => u.email === email);
     if (!user) throw new Error("User not found");
     return user;
   },
 
   async register(email: string, name: string): Promise<UserProfile> {
-    await delay(800);
-    const db = getDb();
-    if (db.users.find(u => u.email === email)) throw new Error("Email already exists");
-    
-    const newUser: UserProfile = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-      role: 'user',
-      preferences: { theme: 'dark' }
-    };
-    
-    const newWorkspace: Workspace = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: 'My Personal Tracker',
-      ownerId: newUser.id,
-      members: [email],
-      currency: '$',
-      categories: ['General', 'Food', 'Transport', 'Utilities']
-    };
-
-    db.users.push(newUser);
-    db.workspaces.push(newWorkspace);
-    saveDb(db);
-    return newUser;
-  },
-
-  async updateUserTheme(email: string, theme: 'light' | 'dark'): Promise<void> {
-    await delay(200);
-    const db = getDb();
-    const user = db.users.find(u => u.email === email);
-    if (user) {
-      user.preferences = { theme };
-      saveDb(db);
-    }
-  },
-
-  async resetPassword(email: string): Promise<boolean> {
-    await delay(1000);
-    return true; 
-  },
-
-  // --- ADMIN ---
-  async getAllUsers(): Promise<UserProfile[]> {
-    await delay(400);
-    return getDb().users;
-  },
-
-  async adminCreateUser(email: string, name: string, role: 'user' | 'admin', password?: string): Promise<UserProfile> {
-    await delay(800);
-    const db = getDb();
-    if (db.users.find(u => u.email === email)) throw new Error("Email already exists");
-
-    const newUser: UserProfile = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-      role: role,
-      preferences: { theme: 'dark' }
-    };
-    
-    // Create default workspace for the new user
-    const newWorkspace: Workspace = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: 'Personal Budget',
-      ownerId: newUser.id,
-      members: [email],
-      currency: '$',
-      categories: ['General', 'Food', 'Transport', 'Utilities']
-    };
-
-    db.users.push(newUser);
-    db.workspaces.push(newWorkspace);
-    saveDb(db);
-    return newUser;
-  },
-
-  async adminResetPassword(userId: string, newPassword: string): Promise<void> {
     await delay(500);
+    const db = getDb();
+    if (db.users.find(u => u.email === email)) throw new Error("Email exists");
+    const newUser: UserProfile = { 
+      id: Math.random().toString(36).substr(2, 9), 
+      email, 
+      name, 
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`, 
+      role: 'user' 
+    };
+    db.users.push(newUser);
+    db.workspaces.push({ 
+      id: Math.random().toString(36).substr(2, 9), 
+      name: 'My Expenses', 
+      ownerId: newUser.id, 
+      members: [email], 
+      currencyCode: 'USD', 
+      categories: ['Food', 'Transport', 'General'] 
+    });
+    saveDb(db);
+    return newUser;
+  },
+
+  async updateUserProfile(userId: string, updates: any): Promise<UserProfile> {
     const db = getDb();
     const user = db.users.find(u => u.id === userId);
     if (!user) throw new Error("User not found");
-    // In a real app, we would hash and save newPassword here.
+    Object.assign(user, updates);
+    saveDb(db);
+    return user;
   },
 
-  async deleteUser(userId: string): Promise<void> {
-    await delay(500);
+  async deleteAccount(userId: string): Promise<void> {
     const db = getDb();
-    // Cannot delete admin
-    const user = db.users.find(u => u.id === userId);
-    if (user && user.role === 'admin') throw new Error("Cannot delete admin");
-
     db.users = db.users.filter(u => u.id !== userId);
-    // Cleanup workspaces where user is owner
     db.workspaces = db.workspaces.filter(w => w.ownerId !== userId);
+    db.transactions = db.transactions.filter(t => !db.workspaces.find(w => w.id === t.workspaceId));
     saveDb(db);
   },
 
-  async getSystemStats(): Promise<{users: number, workspaces: number, transactions: number}> {
+  async inviteUserToWorkspace(workspaceId: string, email: string): Promise<void> {
     const db = getDb();
-    return {
-      users: db.users.length,
-      workspaces: db.workspaces.length,
-      transactions: db.transactions.length
-    };
-  },
-
-  // --- WORKSPACES ---
-  async getWorkspaces(userEmail: string): Promise<Workspace[]> {
-    await delay(300);
-    const db = getDb();
-    return db.workspaces.filter(w => w.members.includes(userEmail));
-  },
-
-  async createWorkspace(name: string, ownerId: string, ownerEmail: string): Promise<Workspace> {
-    await delay(400);
-    const db = getDb();
-    const newW: Workspace = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      ownerId,
-      members: [ownerEmail],
-      currency: '$',
-      categories: ['General', 'Food']
-    };
-    db.workspaces.push(newW);
-    saveDb(db);
-    return newW;
-  },
-
-  async updateWorkspaceSettings(id: string, updates: Partial<Workspace>): Promise<Workspace> {
-    await delay(400);
-    const db = getDb();
-    const idx = db.workspaces.findIndex(w => w.id === id);
-    if (idx === -1) throw new Error("Workspace not found");
-    
-    db.workspaces[idx] = { ...db.workspaces[idx], ...updates };
-    saveDb(db);
-    return db.workspaces[idx];
-  },
-
-  async inviteUserToWorkspace(workspaceId: string, emailToInvite: string): Promise<void> {
-    await delay(500);
-    const db = getDb();
-    const workspace = db.workspaces.find(w => w.id === workspaceId);
-    if (workspace && !workspace.members.includes(emailToInvite)) {
-      workspace.members.push(emailToInvite);
+    const ws = db.workspaces.find(w => w.id === workspaceId);
+    if (ws && !ws.members.includes(email)) {
+      ws.members.push(email);
       saveDb(db);
     }
   },
 
-  // --- TRANSACTIONS ---
-  async getTransactions(workspaceId: string): Promise<Transaction[]> {
-    await delay(300);
+  async removeMember(workspaceId: string, email: string): Promise<void> {
     const db = getDb();
-    return db.transactions.filter(t => t.workspaceId === workspaceId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const ws = db.workspaces.find(w => w.id === workspaceId);
+    if (ws) {
+      ws.members = ws.members.filter(m => m !== email);
+      saveDb(db);
+    }
+  },
+
+  async getWorkspaces(email: string): Promise<Workspace[]> {
+    return getDb().workspaces.filter(w => w.members.includes(email));
+  },
+
+  async getTransactions(wsId: string): Promise<Transaction[]> {
+    return getDb().transactions.filter(t => t.workspaceId === wsId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   },
 
   async addTransaction(tx: Omit<Transaction, 'id'>): Promise<Transaction> {
-    await delay(300);
     const db = getDb();
-    const newTx: Transaction = {
-      ...tx,
-      id: Math.random().toString(36).substr(2, 9)
-    };
+    const newTx = { ...tx, id: Math.random().toString(36).substr(2, 9) };
     db.transactions.unshift(newTx);
     saveDb(db);
     return newTx;
   },
 
-  async editTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction> {
-    await delay(300);
-    const db = getDb();
-    const idx = db.transactions.findIndex(t => t.id === id);
-    if (idx === -1) throw new Error("Transaction not found");
-    
-    db.transactions[idx] = { ...db.transactions[idx], ...updates };
-    saveDb(db);
-    return db.transactions[idx];
-  },
-
   async deleteTransaction(id: string): Promise<void> {
-    await delay(300);
     const db = getDb();
     db.transactions = db.transactions.filter(t => t.id !== id);
     saveDb(db);
+  },
+
+  async updateWorkspace(id: string, updates: any): Promise<Workspace> {
+    const db = getDb();
+    const ws = db.workspaces.find(w => w.id === id);
+    if (!ws) throw new Error("WS not found");
+    Object.assign(ws, updates);
+    saveDb(db);
+    return ws;
+  },
+
+  // Added getUsers for AdminPanel support
+  async getUsers(): Promise<UserProfile[]> {
+    return getDb().users;
   }
 };
